@@ -1,0 +1,21 @@
+十一、服务链路追踪(Spring Cloud Sleuth)(Finchley版本)
+    Spring Cloud Sleuth 主要功能就是在分布式系统中提供追踪解决方案，并且兼容支持了 zipkin
+    ，只需要在pom文件中引入相应的依赖即可
+
+    工程组成:一个server-zipkin,它的主要作用使用ZipkinServer 的功能，收集调用数据，并展示；
+    一个service-hi,对外暴露hi接口；一个service-miya,对外暴露miya接口；这两个service可以相互调用；
+    并且只有调用了，server-zipkin才会收集数据的，这就是为什么叫服务追踪了
+
+1. server-zipkin
+   在spring Cloud为F版本的时候，已经不需要自己构建Zipkin Server了，只需要下载jar即可
+   下载：https://dl.bintray.com/openzipkin/maven/io/zipkin/java/zipkin-server/
+   启动后访问浏览器：localhost:9411
+
+2. service-first，service-second
+      配置文件application.yml指定zipkin server的地址
+      提供接口互相调用
+
+3. 查看追踪
+    http://localhost:9411/
+    http://localhost:9103/hi或http://localhost:9104/miya
+    再打开http://localhost:9411/的界面，点击Dependencies,可以发现服务的依赖关系

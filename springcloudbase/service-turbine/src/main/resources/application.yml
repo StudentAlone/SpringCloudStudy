@@ -1,0 +1,28 @@
+server:
+  port: 9095
+
+spring:
+  application:
+    name: service-turbine
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:9090/eureka/
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      cors:
+        allowed-origins: "*"
+        allowed-methods: "*"
+
+turbine:
+  app-config: service-cli-dashboard-turbine,service-cli-dashboard-turbine2
+  aggregator:
+    clusterConfig: default
+  clusterNameExpression: new String("default")
+  combine-host: true
+  instanceUrlSuffix:
+    default: actuator/hystrix.stream

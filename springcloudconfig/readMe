@@ -1,0 +1,83 @@
+八、分布式配置中心(Spring Cloud Config)(Finchley版本)
+    方便服务配置文件统一管理，实时更新
+    分布式配置中心组件spring cloud config
+    支持配置服务放在配置服务的内存中（即本地），也支持放在远程Git仓库中
+    分两个角色，一是config server，二是config client
+1. config-server，入口Application类加上@EnableConfigServer注解开启配置服务器的功能
+    http://localhost:9098/foo/dev，看仓库文件
+    注意：配置文件服务器部署之后，http请求访问配置是有固定格式的，最长用的:/{application}/{profile}[/{label}]，也就是说
+    ，配置文件可能写的是:config-client-dev.yml或者是(properties), 那么可以访问
+     : http://localhost:9098/config-client/dev 获取远程数据
+
+    http请求地址和资源文件映射如下:
+         /{application}/{profile}[/{label}]
+         /{application}-{profile}.yml
+         /{label}/{application}-{profile}.yml
+         /{application}-{profile}.properties
+         /{label}/{application}-{profile}.properties
+
+
+2. config-client：其配置文件bootstrap.properties
+      spring.cloud.config.label 指明远程仓库的分支
+      spring.cloud.config.uri= http://localhost:9098/ 指明配置服务中心的网址。
+
+3. config-client在配置文件中指向config-server，config-server在配置文件中指向git远程仓库文件，
+   故config-client中的接口可以获取远程仓库中的数据
+   http://localhost:9099/hi
+
+九、高可用的分布式配置中心(Spring Cloud Config)(Finchley版本)
+1. config-client-eureka与config-client基本相同
+   config-server-eureka与config-server基本相同
+   只是把config-client-eureka和config-server-eureka做成了服务注册到eurekaservercfig
+
+2. eurekaservercfig服务注册中心
+
+3. config-client-eureka对config-server-eureka的引用通过config-server-eureka的serviceid，而不是ip
+
+4. 提供这样的命名的配置文件config-client-eureka-dev.profile
+    http://localhost:9102/config-client-eureka/dev
+    http://localhost:9101/hi
+
+5. 在读取配置文件不再写ip地址，而是服务名，这时如果配置服务部署多份，通过负载均衡，从而高可用。()
+
+十、消息总线(Spring Cloud Bus)(Finchley版本)
+     Spring Cloud Bus 将分布式的节点用轻量的消息代理连接起来。它可以用于广播配置文件的更改或者服务之间的通讯
+     ，也可以用于监控。本文要讲述的是用Spring Cloud Bus实现通知微服务架构的配置文件的更改
+     按照官方文档，我们只需要在配置文件中配置 spring-cloud-starter-bus-amqp ；
+      这就是说我们需要装rabbitMq
+
+1. config-client-eureka加入：spring-cloud-starter-bus-amqp，spring-boot-starter-actuator
+    在配置文件application.properties中加上RabbitMq的配置，
+    包括RabbitMq的地址、端口，用户名、密码。以及spring.cloud.bus的配置
+    启动类加入：@RefreshScope
+2. 启动rabbitMq、config-server-eureka、config-client-eureka、eurekaservercfig
+
+3. 访问config-client-eureka中的接口，http://localhost:9101/hi ，数据---foo version 3
+   这时我们去代码仓库将foo的值，不需要重启服务，
+   只需要发送post请求：http://localhost:9101/actuator/bus-refresh
+   ，则config-client-eureka会重新读取配置文件
+
+   另外，/actuator/bus-refresh接口可以指定服务，即使用"destination"参数，
+   比如 “/actuator/bus-refresh?destination=customers:**” 即刷新服务名为customers的所有服务。
+
+十一、服务链路追踪(Spring Cloud Sleuth)(Finchley版本)
+    Spring Cloud Sleuth 主要功能就是在分布式系统中提供追踪解决方案，并且兼容支持了 zipkin
+    ，只需要在pom文件中引入相应的依赖即可
+
+    工程组成:一个server-zipkin,它的主要作用使用ZipkinServer 的功能，收集调用数据，并展示；
+    一个service-hi,对外暴露hi接口；一个service-miya,对外暴露miya接口；这两个service可以相互调用；
+    并且只有调用了，server-zipkin才会收集数据的，这就是为什么叫服务追踪了
+
+1. server-zipkin
+   在spring Cloud为F版本的时候，已经不需要自己构建Zipkin Server了，只需要下载jar即可
+   下载：https://dl.bintray.com/openzipkin/maven/io/zipkin/java/zipkin-server/
+   启动后访问浏览器：localhost:9411
+
+2. service-first，service-second
+      配置文件application.yml指定zipkin server的地址
+      提供接口互相调用
+
+3. 查看追踪
+    http://localhost:9411/
+    http://localhost:9103/hi或http://localhost:9104/miya
+    再打开http://localhost:9411/的界面，点击Dependencies,可以发现服务的依赖关系
